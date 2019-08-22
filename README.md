@@ -16,7 +16,7 @@ GET /config                 // Settings Page to configure all important things
 GET /reset                  // call this to restart the system
 GET /update                 // here you can upload new *.bin files to update the system
 GET /ntpGetTime             // call this will update the time of the system, but it should update it self (every 10 Min)
-GET /showFont               // this endpoint displays all available Chars of the loaded font
+GET /showFont/5             // this endpoint displays all available Chars of the loaded font, the number stands for the shown up time
 GET /wakeup                 // call this to wake the system up from sleeping
 GET /index.css              // serves the Stylesheet for the webpages
 ```
