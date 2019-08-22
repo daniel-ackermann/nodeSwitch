@@ -13,6 +13,7 @@ void Screensaver::show(){
                 tft->loadFont("DejaVuSansCondensed60");
                 tft->setTextColor(TFT_WHITE, TFT_BLACK);
                 tft->drawString(displayedValue,160, 120, 1);
+                tft->loadFont("DejaVuSansCondensed28");
             }else{
                 tft->setTextColor(TFT_WHITE, TFT_BLACK);
                 tft->setTextSize(3);
@@ -40,7 +41,6 @@ boolean Screensaver::hide(uint32_t bgColor){
         case 1:
             tft->setTextColor(TFT_WHITE, bgColor);
             tft->setTextSize(1);
-            tft->loadFont("DejaVuSansCondensed28");
             return true;
         default:
             digitalWrite(DISPLAY_LIGHT_POWER_PIN, 1);
@@ -54,7 +54,16 @@ void Screensaver::update(char value[8]){
     }
     switch(mode){
         case 1:
-            tft->drawString(value,160, 120, 4);
+            if (SPIFFS.exists("/DejaVuSansCondensed60.vlw")){
+                tft->loadFont("DejaVuSansCondensed60");
+                tft->setTextColor(TFT_WHITE, TFT_BLACK);
+                tft->drawString(displayedValue,160, 120, 1);
+                tft->loadFont("DejaVuSansCondensed28");
+            }else{
+                tft->setTextColor(TFT_WHITE, TFT_BLACK);
+                tft->setTextSize(3);
+                tft->drawString(displayedValue,160, 120, 4);
+            }
             break;
         default:
             break;
