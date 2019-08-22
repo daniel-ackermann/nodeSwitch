@@ -46,7 +46,6 @@ long                    oldPosition             = 0;
 long                    oldPositionTick         = 0;
 unsigned int            oldPercent              = 0;
 int                     wlanReconnectCount      = 0;
-boolean                 updateActive            = false;
 int                     alertActive             = -1;
 const static String     resetReason             = ESP.getResetReason();
 
@@ -64,27 +63,11 @@ char uptime[20];                                     // for output
 char localTime[8];
 unsigned short int      localPort               = 2390;
 
-/* Don't hardwire the IP address or we won't get the benefits of the pool.
-    Lookup the IP address for the host name instead */
-//IPAddress timeServer(129, 6, 15, 28); // time.nist.gov NTP server
 IPAddress               timeServerIP;                                   // time.nist.gov NTP server address
 const byte              NTP_PACKET_SIZE         = 48;                   // NTP time stamp is in the first 48 bytes of the message
-byte                    packetBuffer[ NTP_PACKET_SIZE ];                //buffer to hold incoming and outgoing packets
+byte                    packetBuffer[ NTP_PACKET_SIZE ];                // buffer to hold incoming and outgoing packets
 const char*             ntpServerName           = "time.nist.gov";
 unsigned long int       lastUpdate              = 0;
-
-
-
-
-/***
-/device/id/status
-/variable/id/status
-/alert/id/title/message/color ??
-/config/key/value
-    keys[QSIP,QSPort,ardunioID,SSID,password]
-/reset
-/showFont/Sekunden
-***/
 
 const char htmlHeader[] PROGMEM           = "<html>"
                                                 "<head>"
@@ -109,7 +92,7 @@ void setup() {
     quickswitch.loadConfig();
     quickswitch.initTFT();
 
-    /* Serial */
+    /*** Serial ***/
     Serial.begin(115200);
     Serial.println("Starting..");
 
@@ -138,12 +121,14 @@ void setup() {
 
     quickswitch.tft.loadFont("DejaVuSansCondensed28");
 
-    // Displaylight
+    /*** Displaylight ***/
     pinMode(DISPLAY_LIGHT_POWER_PIN, OUTPUT);
     digitalWrite(DISPLAY_LIGHT_POWER_PIN, 1);
 
+    /*** Real startup ***/
+    // Connect to WiFi or start own
     if(digitalRead(BUTTON_PIN) == HIGH && quickswitch.startWLAN() && FORCE_ACCESSPOINT == false){
-        // quickswitch.pixel.startAnimation();
+        // Load Config fom QuickSwitch
         quickswitch.displayError(6);
         int counter = 0;
         while(!quickswitch.setUpDeviceList(0) && counter < 5){
@@ -156,6 +141,7 @@ void setup() {
             counter++;
         }
 
+        // Try 5 times maximum else display error
         screensaver.setMode(quickswitch.useScreensaver);
         quickswitch.tft.loadFont("DejaVuSansCondensed28");
         if(counter < 5){
@@ -187,6 +173,8 @@ void setup() {
         Serial.println(F("[MDNS] responder started"));
     }
 
+    /*** Setup Updates through Arduino IDE ***/
+
     // Port defaults to 8266
     // ArduinoOTA.setPort(8266);
 
@@ -205,8 +193,6 @@ void setup() {
         detachInterrupt(digitalPinToInterrupt(BUTTON_PIN));
         detachInterrupt(digitalPinToInterrupt(DREHENCODERPIN1));
         detachInterrupt(digitalPinToInterrupt(DREHENCODERPIN2));
-        // To avoid
-        updateActive = true;
 
         screensaver.hide(quickswitch.bgColor);
         quickswitch.tft.fillScreen(quickswitch.bgColor);
@@ -290,8 +276,8 @@ void loop() {
     rtttl::play();
 
 
-    /* Verarbeitung des Interrupts */
-    if(quickswitch.switchDevice != 0 && updateActive == false){
+    /*** Verarbeitung des Interrupts ***/
+    if( quickswitch.switchDevice != 0 ){
         quickswitch.switchDevice = 0;
         if(dismissAlert()){
             return;
@@ -324,7 +310,7 @@ void loop() {
                 }
                 break;
             case 3:
-                // Tue nichts, da Variable.
+                // Do nothing => Variable.
                 break;
             case 4:   //setRelative
                 if(quickswitch.deviceMode == 4){
@@ -442,16 +428,9 @@ void setUpAccesspoint(){
     WiFi.softAP("nodeSwitch");
     Serial.println(F("Keine Verbindung zum WLAN möglich, starte Accesspoint"));
 }
+
 /***********************
-
-Ziel:
-    jede veränderung wahrnehmbar
-        um: Prozente          => update LEDs
-            Farben            => update LEDs
-            erste Bewegung schaltet Display ein
-    dabei intervalle zum verändern der Geräte,
-            => update Display
-
+ * Analyse the Rotaryencoder and use the data dependin on the selected mode.
 ************************/
 void drehencoder(int newPosition){
     if(newPosition == oldPosition || alertActive > 0){
@@ -538,6 +517,10 @@ void drehencoder(int newPosition){
     }
 }
 
+/**
+ * Function to get the Index of a device using the devices ID
+ * return the index of the device
+ **/
 int getIndexById(const char* id){
     for(int u = 0; u < quickswitch.deviceCount; u++){
         if(strcmp (quickswitch.deviceList[u].getId(), id) == 0){
@@ -547,9 +530,11 @@ int getIndexById(const char* id){
     return -1;
 }
 
-
+/**
+ * Sets up the Webserver and all routes
+ **/
 void setupWebserver(){
-
+    // Used for the HTML-Styling
     server.on("/index.css", [](){
         Serial.println(F("[webserver] GET /index.css"));
         server.sendHeader("Cache-Control"," max-age=365");
@@ -558,6 +543,7 @@ void setupWebserver(){
         );
     });
 
+    // Displays alls available Characters of a font
     server.on("/showFont", [](){
         Serial.println(F("[webserver] GET /showFont"));
         if (!server.authenticate(WWW_USER, WWW_PASSWORD)){
@@ -581,6 +567,7 @@ void setupWebserver(){
         interrupts();
     });
 
+    // Wake the device up
     server.on("/wakeup", [](){
         Serial.println(F("[webserver] GET /wakeup"));
         lastAction = millis();
@@ -597,6 +584,7 @@ void setupWebserver(){
         }
     });
 
+    // Saves the Settings pushed by POST
     server.on("/config", HTTP_POST, []() {
         Serial.println(F("[webserver] POST /config"));
         if (!server.authenticate(WWW_USER, WWW_PASSWORD)) {
@@ -644,6 +632,7 @@ void setupWebserver(){
         }
     });
 
+    // Serve a Webpage for setting up the device
     server.on("/config", HTTP_GET, []() {
         Serial.println(F("[webserver] GET /config"));
         if (!server.authenticate(WWW_USER, WWW_PASSWORD)) {
@@ -664,6 +653,7 @@ void setupWebserver(){
         server.send(200, "text/html", message);
     });
 
+    // Display or remove an alert
     server.on("/alert", HTTP_POST, [](){
         Serial.println(F("[webserver] POST /alert"));
         if(server.args() > 0){
@@ -755,6 +745,7 @@ void setupWebserver(){
                     "</script>"
     */
 
+    // Serves the Main-Page
     server.on("/", [](){
         Serial.println(F("[webserver] GET /"));
         // Serial.println(localTime);
@@ -800,6 +791,7 @@ void setupWebserver(){
         server.send(200, "text/html", htmlContent );
     });
 
+    // restarts the whole system, neccessary for reloading the devicelist and all other settings from the QuickSwitch-Server
     server.on("/reset", [](){
         Serial.println(F("[webserver] GET /reset"));
         if (!server.authenticate(WWW_USER, WWW_PASSWORD)){
@@ -823,6 +815,7 @@ void setupWebserver(){
         // ESP.reset();
     });
 
+    // Updates the status of a displayed Variable
     server.on("/variable", HTTP_POST, [](){
         Serial.println(F("[webserver] POST /variable"));
         if(server.args() > 0){
@@ -849,6 +842,7 @@ void setupWebserver(){
         server.send(422);
     });
 
+    // Updates the status of a displayed device
     server.on("/action", HTTP_POST, [](){
         Serial.println(F("[webserver] POST /action"));
         if(server.args() > 0){
@@ -867,6 +861,7 @@ void setupWebserver(){
         server.send(422);
     });
     
+    // Let the esp taking the time from a timeserver
     server.on("/ntpGetTime", [](){
         Serial.println(F("[webserver] GET /ntpGetTime"));
         // server.send(200);
@@ -875,6 +870,7 @@ void setupWebserver(){
         ntpGetTime();
     });
 
+    // handles all other requests
     server.onNotFound([]() {
         Serial.println(F("[webserver] onNotFound"));
         String message = "File Not Found\n\n";
@@ -893,11 +889,15 @@ void setupWebserver(){
         server.send(404, "text/plain", message);
     });
 
+    // add /update for manual updates
     httpUpdater.setup(&server);
+    // starts the webserver itself
     server.begin();
 }
 
-// // send an NTP request to the time server at the given address
+/**
+ * sends an NTP request to the time server at the given address
+ **/
 void sendNTPpacket(IPAddress& address) {
     Serial.println(F("[NTP] sending NTP packet..."));
     // set all bytes in the buffer to 0
@@ -921,12 +921,18 @@ void sendNTPpacket(IPAddress& address) {
     udp.endPacket();
 }
 
+/**
+ * Resolves a path to get an IP and use it to request the Time
+ **/
 void ntpGetTime(){
     WiFi.hostByName(ntpServerName, timeServerIP);
     sendNTPpacket(timeServerIP); // send an NTP packet to a time server
     lastUpdate = millis();
 }
 
+/**
+ * Looks for packages containing the time
+ **/
 void udpServerLoop(){
     int cb = udp.parsePacket();
     if(cb){
@@ -959,6 +965,9 @@ void udpServerLoop(){
     }
 }
 
+/**
+ * Communicates with QuickSwitch that an Alert is to dismiss
+ **/
 bool dismissAlert(){
     if(alertActive > 0 ){
         HTTPClient http;
