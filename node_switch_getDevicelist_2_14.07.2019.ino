@@ -69,9 +69,8 @@ unsigned short int      localPort               = 2390;
 //IPAddress timeServer(129, 6, 15, 28); // time.nist.gov NTP server
 IPAddress               timeServerIP;                                   // time.nist.gov NTP server address
 const byte              NTP_PACKET_SIZE         = 48;                   // NTP time stamp is in the first 48 bytes of the message
-byte                    packetBuffer[ NTP_PACKET_SIZE];                  //buffer to hold incoming and outgoing packets
+byte                    packetBuffer[ NTP_PACKET_SIZE ];                //buffer to hold incoming and outgoing packets
 const char*             ntpServerName           = "time.nist.gov";
-// const char* ntpServerName = "fritz.box";
 unsigned long int       lastUpdate              = 0;
 
 
@@ -163,7 +162,7 @@ void setup() {
             quickswitch.pixel.pixels.setBrightness(quickswitch.ledBrightness);
             digitalWrite(DISPLAY_LIGHT_POWER_PIN, 1);
             quickswitch.clearLCD();
-            quickswitch.displayWifiStrength();
+            quickswitch.displayWifiStrength(false);
             quickswitch.updateLCD(false);
 
             attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), sendStatusToQuickSwitch, FALLING);
@@ -302,10 +301,9 @@ void loop() {
                 if(quickswitch.deviceMode == 1){
                     if(quickswitch.deviceList[quickswitch.selected].turn()){
                         quickswitch.deviceMode = 0;
-                        quickswitch.removeError();
-                        quickswitch.updateLCD(false);
                     }else{
                         quickswitch.displayError(8);
+                        return;
                     }
                 }else{
                     // selectStatus
@@ -316,10 +314,9 @@ void loop() {
                 if(quickswitch.deviceMode == 2){
                     if(quickswitch.deviceList[quickswitch.selected].turn()){
                         quickswitch.deviceMode = 0;
-                        quickswitch.removeError();
-                        quickswitch.updateLCD(false);
                     }else{
                         quickswitch.displayError(8);
+                        return;
                     }
                 }else{
                     // selectStatus
@@ -334,10 +331,9 @@ void loop() {
                     if(quickswitch.deviceList[quickswitch.selected].turn()){
                         quickswitch.deviceList[quickswitch.selected].setStatus("0.50");
                         quickswitch.deviceMode = 0;
-                        quickswitch.removeError();
-                        quickswitch.updateLCD(false);
                     }else{
                         quickswitch.displayError(8);
+                        return;
                     }
                 }else{
                     quickswitch.deviceMode = 4;
@@ -352,13 +348,20 @@ void loop() {
                 quickswitch.deviceList[quickswitch.selected].setStatus(newStatus);
                 if(quickswitch.deviceList[quickswitch.selected].turn()){
                     quickswitch.deviceList[quickswitch.selected].setStatus(newStatus);
-                    quickswitch.updateLCD(false);
-                    quickswitch.removeError();
                 }else{
                     quickswitch.displayError(8);
+                    return;
                 }
                 break;
         }
+
+        if(screensaver.hide(quickswitch.bgColor)){
+            quickswitch.clearLCD();
+        }
+        quickswitch.removeError();
+        quickswitch.updateLCD(true);
+
+        quickswitch.displayWifiStrength(true);
     }
     /*** Display auto off ***/
     if(lastAction + quickswitch.displayTimeout * 1000 < millis() && quickswitch.pixel.sleep() == 0 && alertActive < 0 && screensaver.active() == false) {
@@ -375,6 +378,14 @@ void loop() {
         }
         ss = 0;
 
+        // Following Code runs every Minute:
+
+        // Update Wifi Strength
+        if(!screensaver.active()){
+            quickswitch.displayWifiStrength(false);
+        }
+
+        // Update time and uptime
         miUptime++;
         if (miUptime>59) {
             miUptime=0;
@@ -395,6 +406,8 @@ void loop() {
             hh=0;
         }
         sprintf(localTime, " %02d:%02d ", hh, mi);
+        
+        // Update the Screensaver to display the new time
         screensaver.update(localTime);
     }
 
@@ -403,6 +416,7 @@ void loop() {
         ntpGetTime();
     }
 
+    // WLAN Status check and reconnect
     if(WiFi.status() != WL_CONNECTED && WiFi.getMode() == WIFI_STA){
         Serial.println(F("reconnect"));
         quickswitch.displayError(8);
@@ -417,10 +431,6 @@ void sendStatusToQuickSwitch(){
         quickswitch.switchDevice = 1;
         alteZeit = millis();
     }
-    if(screensaver.hide(quickswitch.bgColor)){
-        quickswitch.clearLCD();
-    }
-    quickswitch.updateLCD(true);
 }
 
 
@@ -583,6 +593,7 @@ void setupWebserver(){
         if(screensaver.hide(quickswitch.bgColor)){
             quickswitch.clearLCD();
             quickswitch.updateLCD(true);
+            quickswitch.displayWifiStrength(true);
         }
     });
 
@@ -678,6 +689,7 @@ void setupWebserver(){
                 }else{
                     quickswitch.clearLCD();
                     quickswitch.updateLCD(false);
+                    quickswitch.displayWifiStrength(true);
                 }
                 return;
             }
@@ -758,6 +770,9 @@ void setupWebserver(){
                         "</li>"
                         "<li>"
                             "Display<a href='/wakeup' class='right btn'>Einschalten</a>"
+                        "</li>"
+                        "<li>"
+                            "Uhrzeit<a href='/ntpGetTime' class='right btn'>Aktualisieren</a>"
                         "</li>"
                         "<li>"
                             "Einstellungen<a href='/config' class='right btn'>Öffnen</a>"
@@ -854,7 +869,9 @@ void setupWebserver(){
     
     server.on("/ntpGetTime", [](){
         Serial.println(F("[webserver] GET /ntpGetTime"));
-        server.send(200);
+        // server.send(200);
+        server.sendHeader("Location", String("/"), true);
+        server.send(302, "text/plain", "");
         ntpGetTime();
     });
 
