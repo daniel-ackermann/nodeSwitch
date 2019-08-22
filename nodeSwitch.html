@@ -1,0 +1,158 @@
+<html>
+<head>
+    <meta http-equiv='content-type' content='text/html; charset=UTF-8'>
+    <title>nodeSwitch</title>
+    <meta charset='utf-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <style type='text/css'>
+        body,
+        html {
+            margin: 0px;
+            font: 20px arial;
+        }
+
+        h1 {
+            position: sticky;
+            top: 0px;
+            background: #ddd;
+            padding: 0 10px;
+            margin: 0;
+        }
+
+        ul {
+            list-style-type: none;
+            margin-top: 10px;
+            padding: 0 0 30px 0;
+        }
+
+        ul  a,
+        ul  input,
+        .inputfile + label {
+            background: #ddd;
+            padding: 3px;
+            text-decoration: none;
+            font: 20px arial;
+            color:#000;
+            border: 1px solid #eee;
+            margin-right: 10px;
+        }
+        ul a:hover,
+        ul input:hover,
+        .inputfile:focus + label,
+        .inputfile + label:hover {
+            background: #ccc;
+        }
+        ul input[type='text']:hover,
+        ul input[type='number']:hover {
+            background: #fff;
+        }
+        li {
+            padding: 8px 0 8px 10px;
+        }
+        li:hover {
+            background: #99d;
+        }
+        li input{
+            margin-top: -4px;
+            float: right;
+        }
+        #updateForm {
+            margin: 0;
+            float: right;
+        }
+        input[type='file'] {
+            display:none;
+        }
+        input[type='submit'], .inputfile + label{
+            cursor: pointer;
+        }
+        #content {
+            background-color: #88C;
+            height: 100%;
+            margin: 0 auto;
+            overflow-y: scroll;
+            -ms-overflow-style: none;
+            scrollbar-width: none; 
+            display: none;
+        }
+
+        #footer {
+            position: absolute;
+            bottom: 0px;
+            background: #fff;
+            width: calc(100% - 20px);
+            text-align: end;
+            padding: 0 10px;
+        }
+
+        /* Breite beträgt mindestens 50em */
+        @media (min-width: 50em) {
+            #content {
+                max-width: 66.6%;
+                width: 80%;
+            }
+
+            #footer {
+                max-width: calc(66.6% - 20px);
+                width: 80%;
+            }
+        }
+        .danger {
+            background: rgb(196, 0, 0);
+            color: #fff;
+            border: 1px solid #000;
+        }
+        .danger:hover {
+            background: rgb(151, 0, 0);
+        }
+    </style>
+</head>
+
+<body>
+    <div id='content'>
+        <h1>nodeSwitch</h1>
+        <ul>
+            <li><a href='/reset'>Neustarten</a></li>
+            <li><a href='/showFont'>Schrift auf dem Display ausgeben</a></li>
+            <li><a href='/config'>Einstellungen</a></li>
+            <li>
+                Update
+                <form method='POST' id='updateForm' action='/update' enctype='multipart/form-data'>
+                    <input type='file' id='update' name='update' class='inputfile' />
+                    <label for='update'>Datei wählen</label>
+                    <input type='submit' value='Update' class='danger'></input>
+                </form>
+            </li>
+            <li>
+                Moin
+            </li>
+            <li>
+                QSIP
+                <input type='text' value='Update'></input>
+            </li>
+            <li>
+                QSIP
+                <input type='number' value='25'></input>
+            </li>
+            <li>
+                QSIP
+                <input type='text' value='Update'></input>
+            </li>
+            <li>
+                QSIP
+                <input type='checkbox'></input>
+            </li>
+        </ul>
+        <div id='footer'>
+            <a href='https://github.com/dede53'>Developed by dede53</a> Version:1.0.0
+        </div>
+    </div>
+    <script type='text/javascript'>
+        var input = document.getElementById('update');
+        input.addEventListener( 'change', function(e){
+            input.nextElementSibling.innerHTML = e.target.value.split('\\').pop();
+        });
+    </script>
+</body>
+
+</html>

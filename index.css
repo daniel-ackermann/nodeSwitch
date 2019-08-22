@@ -1,0 +1,138 @@
+body,
+html {
+    background: #41464d;
+    margin: 0;
+    font: 20px arial;
+}
+h1 {
+    position: sticky;
+    top: 0;
+    padding: 0 10px;
+    margin: 0;
+    font-weight: lighter;
+    border-bottom: solid #ccc 1px;
+    overflow: hidden;
+    background-color: #fff;
+}
+h1 div {
+    font-size: 20px;
+    float: right;
+    padding-top: 1rem;
+}
+.badge,
+.btn,
+.input {
+    border: 0;
+    color: #000;
+    font-size: 1em;
+    min-width:14em;
+    line-height: 30px;
+    margin: 0.3em 0 0 0;
+    text-decoration: none;
+    display: inline-block;
+    text-align: center !important;
+    background-color: lightgrey;
+    outline: solid 1px lightgrey;
+}
+.btn {
+    cursor: pointer;
+    font-family: Sans;
+}
+.btn:hover {
+    background-color: darkgrey;
+}
+.danger {
+    color: white;
+    border: 0 solid #000;
+    background-color: #a00;
+    outline: solid 1px #000;
+}
+.btn.danger:hover {
+    background-color: #800;
+}
+ul {
+    list-style: none;
+    padding: 0.5em 0 2em 0;
+    margin: 0;
+}
+ul ul {
+    padding: 0;
+}
+li {
+    line-height: 2.5em;
+    padding: 0 1em;
+}
+li:hover {
+    background-color: #eee;
+}
+li li {
+    margin-right: -1em;
+}
+li li:hover {
+    background-color: #ccc;
+}
+.right {
+    float: right;
+    text-align: right;
+}
+.left {
+    float: left;
+}
+#updateForm {
+    margin: 0;
+    float: right;
+}
+input[type='file'] {
+    display: none;
+}
+input[type='submit'],
+.inputfile + label {
+    cursor: pointer;
+}
+#content {
+    background-color: #fff;
+    height: 100%;
+    margin: 0 auto;
+    overflow-y: scroll;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+#content::-webkit-scrollbar {
+    display: none;
+}
+#footer {
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    position: fixed;
+    bottom: 0;
+    background: #fff;
+    width: calc(100% - 20px);
+    text-align: end;
+    padding: 0 10px;
+}
+@media (min-width: 50em) {
+    #content {
+        max-width: 62.5rem;
+    }
+    #footer {
+        max-width: calc(62.5rem - 20px);
+    }
+}
+@media (max-width: 575.98px) {
+    .btn,
+    .badge,
+    .input {
+        float: unset;
+        width: 100%;
+    }
+    li {
+        line-height: 1;
+    }
+    h1 div {
+        padding: 0;
+    }
+}
+
+.input:hover {
+    background: #fff;
+}
