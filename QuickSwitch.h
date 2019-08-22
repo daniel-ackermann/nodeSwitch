@@ -18,9 +18,6 @@ extern "C" {
 }
 
 
-
-
-
 typedef struct settingsType_t{
     char                    SSID[31]      = "";                    // SSID of WiFi
     char                    identity[31]  = "";                    // SSID of WiFi
@@ -60,7 +57,7 @@ class QuickSwitch {
         // short int       shownStatus                 = 0;
         uint8_t         shownWifi                   = 0;
     public:
-        void            displayWifiStrength();
+        void            displayWifiStrength(bool force);
         byte            useScreensaver              = 0;
         short int       selected                    = 0;                       //      index of devicelist
         short int       switchDevice                = 0;

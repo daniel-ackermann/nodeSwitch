@@ -213,9 +213,10 @@ void QuickSwitch::displayError(int code){
 }
 
 void QuickSwitch::removeError(){
-    tft.fillCircle(40, 25, 5, bgColor); // Draw circle
-    shownWifi = 0;
-    displayWifiStrength();
+    if(workingStatus == 8){
+        tft.fillCircle(40, 25, 5, bgColor); // Draw circle
+        displayWifiStrength(true);
+    }
 }
 
 void QuickSwitch::setYPosition(int position){
@@ -367,10 +368,10 @@ boolean QuickSwitch::startWLAN(){
 }
 
 
-void QuickSwitch::displayWifiStrength(){
+void QuickSwitch::displayWifiStrength(bool force = false){
     // 100 / 92 * x
     int wifiNow = WiFi.RSSI();
-    if(shownWifi != wifiNow){
+    if(shownWifi != wifiNow || force){
         fillSegment(30, 30, -45, 90, 25, calculateColor('c', 'c', 'c'));
         fillSegment(30, 30, -45, 90, ( (100 - abs(wifiNow)) * 0.25), calculateColor('3', '3', '3'));
         shownWifi = wifiNow;
