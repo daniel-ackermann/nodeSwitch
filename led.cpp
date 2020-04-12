@@ -102,7 +102,7 @@ void Led::updateAnimation(){
     lastAnimation = millis();
 }
 
-void Led::sleep( boolean status){
+void Led::sleep(){
     animate = false;
     sleeping = true;
     for(int i = 0; i < displayedValue; i++){
@@ -110,10 +110,12 @@ void Led::sleep( boolean status){
         pixels.show();
         delay(20);
     }
-    displayedValue = 0;
+    if(displayedStartIndex == 0){
+        displayedValue = 0;
+    }
 }
 
-bool Led::sleep(){
+bool Led::isSleeping(){
     return sleeping;
 }
 void Led::setValue(float value, uint32_t color){ // float von 0,00 - 1,00 und uint32_t mit farben
@@ -131,7 +133,7 @@ void Led::setValue(float value){ // float von 0,00 - 1,00
     Serial.println(value);
     startIndex    = 0;
     newValue      = (int)(value * pixels.numPixels());
-    newColor      = pixels.Color(255, 0, 255);
+    newColor      = pixels.Color(STD_COLOR_RED, STD_COLOR_GREEN, STD_COLOR_BLUE);
     animate       = true;
 }
 
@@ -157,8 +159,12 @@ void Led::setRelative(float value){
             newValue      = 9;
         }
     }
-    newColor          = pixels.Color(255, 0, 255);
+    newColor          = pixels.Color(STD_COLOR_RED, STD_COLOR_GREEN, STD_COLOR_BLUE);
     animate           = true;
+}
+
+uint32_t Led::getDisplayedColor(){
+    return displayedColor;
 }
 
 void Led::setColorDevice(float y){ // float von 0,00 - 1,00

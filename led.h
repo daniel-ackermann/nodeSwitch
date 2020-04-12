@@ -36,7 +36,7 @@ class Led {
         bool sleeping                            = 0; // 1 = sleeping; 0 = awake
         // Color
         uint32_t displayedColor                 = pixels.Color(0,0,0);
-        uint32_t newColor                       = pixels.Color(255,0,255);
+        uint32_t newColor                       = pixels.Color(STD_COLOR_RED, STD_COLOR_GREEN, STD_COLOR_BLUE);
         bool animate                            = false;
         unsigned long lastAnimation             = 0;
     public:
@@ -44,11 +44,12 @@ class Led {
         void powerOnAnimation();
         void setup();
         void updateAnimation();
-        void sleep(boolean status);
-        bool sleep();
+        void sleep();
+        bool isSleeping();
         void setValue(float value, uint32_t color);
         void setValue(float value);
         void forceOff();
+        uint32_t  getDisplayedColor();
         void setColorDevice(float value);
         void setRelative(float value);
         int  calculateColor(float value);
