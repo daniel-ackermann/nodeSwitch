@@ -27,6 +27,12 @@
  * 
  * = 2,44A
  * 
+ * bei aktiviertem alert und einer erfolgenden Drehbewegung am Rad verändert sich der wert der folgend aus dem Drehencoder ausgelesen wird und 
+ * somit springt das display dann zu anderen listeneintträgen.
+ *   => während ein Alert aktiv ist muss die Drehbewegung nicht nur aktiviert werden sondern 
+ *      auch der aktuelle Wert wieder in den Encoder geschrieben werden!
+ *      Hierzu hatte ich den Test vollzogen es umzusetzen in der function drehencoder war jedoch gescheitert. Auch jetzt eineige Wochen später
+ *      erscheint mir das Vorgehen jedoch richtig.
  **/
 
 
@@ -47,6 +53,8 @@ long                    oldPositionTick         = 0;
 unsigned int            oldPercent              = 0;
 int                     wlanReconnectCount      = 0;
 int                     alertActive             = -1;
+int                     counter                 = 765;
+bool                    isFalling               = true;
 const static String     resetReason             = ESP.getResetReason();
 
 // Time
@@ -80,7 +88,8 @@ const char htmlHeader[] PROGMEM           = "<html>"
                                                     "<div id='content'>"
                                                         "<h1>nodeSwitch<div>Die neue Generation Lichtschalter</div></h1>";
 const char htmlFooter[] PROGMEM                       = "<div id='footer'>"
-                                                            "<a target='_blank' href='https://github.com/dede53'>Developed by dede53</a> Version:1.1.0"
+                                                            "<a target='_blank' href='https://github.com/dede53'>Developed by dede53</a> Version:"
+                                                            VERSION
                                                         "</div>"
                                                     "</div>"
                                                 "</body>"
@@ -156,6 +165,7 @@ void setup() {
             detachInterrupt(digitalPinToInterrupt(DREHENCODERPIN1));
             detachInterrupt(digitalPinToInterrupt(DREHENCODERPIN2));
             quickswitch.displayError(3);
+            alertActive = 1;
         }
     }else{
         setUpAccesspoint();
@@ -200,13 +210,7 @@ void setup() {
         quickswitch.tft.setTextDatum(MC_DATUM);
         quickswitch.tft.drawString( "Update:" , 160, 90, 1);
         quickswitch.tft.drawString( "%" , 175, 120, 1);
-        String type;
-        if (ArduinoOTA.getCommand() == U_FLASH) {
-            type = "sketch";
-        } else { // U_SPIFFS
-            type = "filesystem";
-        }
-        quickswitch.pixel.sleep(true);
+        quickswitch.pixel.sleep();
         digitalWrite(DISPLAY_LIGHT_POWER_PIN, 1);
     });
     ArduinoOTA.onEnd([](){
@@ -343,17 +347,33 @@ void loop() {
 
         if(screensaver.hide(quickswitch.bgColor)){
             quickswitch.clearLCD();
+            quickswitch.displayWifiStrength(true);
         }
         quickswitch.removeError();
         quickswitch.updateLCD(true);
 
-        quickswitch.displayWifiStrength(true);
     }
     /*** Display auto off ***/
-    if(lastAction + quickswitch.displayTimeout * 1000 < millis() && quickswitch.pixel.sleep() == 0 && alertActive < 0 && screensaver.active() == false) {
-        quickswitch.pixel.sleep(true);
+    if(lastAction + quickswitch.displayTimeout * 1000 < millis() && quickswitch.pixel.isSleeping() == 0 && alertActive < 0 && screensaver.active() == false) {
+        quickswitch.pixel.sleep();
         screensaver.show();
     }
+
+    // Alert: LED animation: Fading up and down
+    // if(alertActive > 0){
+    //     quickswitch.pixel.setValue(1, quickswitch.pixel.pixels.ColorHSV(quickswitch.pixel.getDisplayedColor(), 255, round(counter/3)));
+    //     if(isFalling){
+    //         counter--;
+    //     }else{
+    //         counter++;
+    //     }
+    //     if(counter > 765){
+    //         isFalling = true;
+    //     }
+    //     if(counter < 200){
+    //         isFalling = false;
+    //     }
+    // }
 
     /*** Timecounter ***/
     if ((millis() - lastTick * 1000) >= 1000) {
@@ -367,7 +387,7 @@ void loop() {
         // Following Code runs every Minute:
 
         // Update Wifi Strength
-        if(!screensaver.active()){
+        if(screensaver.active() == false && WiFi.getMode() != WIFI_AP && alertActive < 0){
             quickswitch.displayWifiStrength(false);
         }
 
@@ -391,7 +411,7 @@ void loop() {
         if (hh>23) {
             hh=0;
         }
-        sprintf(localTime, " %02d:%02d ", hh, mi);
+        sprintf(localTime, " %02d:%02d", hh, mi);
         
         // Update the Screensaver to display the new time
         screensaver.update(localTime);
@@ -421,7 +441,12 @@ void sendStatusToQuickSwitch(){
 
 
 void setUpAccesspoint(){
-    noInterrupts();
+    // prevent interrupting by scolling/button
+    detachInterrupt(digitalPinToInterrupt(BUTTON_PIN));
+    detachInterrupt(digitalPinToInterrupt(DREHENCODERPIN1));
+    detachInterrupt(digitalPinToInterrupt(DREHENCODERPIN2));
+    // Do not switch display off
+    alertActive = 1;
     quickswitch.displayError(5);
     WiFi.mode(WIFI_AP);
     delay(100);
@@ -430,10 +455,14 @@ void setUpAccesspoint(){
 }
 
 /***********************
- * Analyse the Rotaryencoder and use the data dependin on the selected mode.
+ * Analyse the Rotaryencoder and use the data depending on the selected mode.
 ************************/
 void drehencoder(int newPosition){
-    if(newPosition == oldPosition || alertActive > 0){
+    if(newPosition == oldPosition){
+        return;
+    }
+    if(alertActive > -1){
+        myEnc.write(quickswitch.getYPosition() / ROTATIONSPEEDFACTOR);
         return;
     }
 
@@ -441,6 +470,7 @@ void drehencoder(int newPosition){
     if(newPosition != oldPositionTick){
         if(screensaver.hide(quickswitch.bgColor)){
             quickswitch.clearLCD();
+            quickswitch.displayWifiStrength(true);
         }
         quickswitch.updateLCD(true);
         lastAction = millis();
@@ -492,27 +522,25 @@ void drehencoder(int newPosition){
             }
             break;
         default: // ScrollDevices
-            if (oldPosition != newPosition) {
-                int diff = abs(oldPosition - newPosition) * ROTATIONSPEEDFACTOR;
-                int ypos = quickswitch.getYPosition();
-                if(newPosition > oldPosition){
-                    ypos = ypos + diff;
-                    if(ypos > 0){
-                        ypos = 0;
-                    }
+            int diff = abs(oldPosition - newPosition) * ROTATIONSPEEDFACTOR;
+            int ypos = quickswitch.getYPosition();
+            if(newPosition > oldPosition){
+                ypos = ypos + diff;
+                if(ypos > 0){
+                    ypos = 0;
                 }
-                if(newPosition < oldPosition){
-                    ypos = ypos - diff;
-                    if (ypos < ((quickswitch.deviceCount - 1) * LINEHIGHT) * -1) {
-                        ypos = ((quickswitch.deviceCount - 1) * LINEHIGHT) * -1;
-                    }
-                }
-
-                quickswitch.selected =  (abs(ypos) + (LINEHIGHT / 2)) / LINEHIGHT;
-                quickswitch.setYPosition(ypos);
-                quickswitch.updateLCD(false);
-                oldPosition = newPosition;
             }
+            if(newPosition < oldPosition){
+                ypos = ypos - diff;
+                if (ypos < (quickswitch.deviceCount - 1) * LINEHIGHT * -1) {
+                    ypos = (quickswitch.deviceCount - 1) * LINEHIGHT * -1;
+                }
+            }
+
+            quickswitch.selected =  (abs(ypos) + (LINEHIGHT / 2)) / LINEHIGHT;
+            quickswitch.setYPosition(ypos);
+            quickswitch.updateLCD(false);
+            oldPosition = newPosition;
             break;
     }
 }
@@ -539,7 +567,7 @@ void setupWebserver(){
         Serial.println(F("[webserver] GET /index.css"));
         server.sendHeader("Cache-Control"," max-age=365");
         server.send(200, "text/css",
-            "body,html{background:#41464d;margin:0;font:1em arial}h1{position:sticky;top:0;padding:0 10px;margin:0;font-weight:lighter;border-bottom:solid #ccc 1px;overflow:hidden;background-color:#fff}h1 div{font-size:20px;float:right;padding-top:1rem}.badge,.btn,.input{border:0;color:#000;margin:.3em 0 0 0;font-size:1em;line-height:30px;text-align:center !important;text-decoration:none;display:inline-block;outline:solid 1px lightgrey;background-color:lightgrey;min-width:14em;}.btn{cursor:pointer;font-family:Sans}.btn:hover{background-color:darkgrey}.danger{color:white;border:0 solid #000;background-color:#a00;outline:solid 1px #000}.btn.danger:hover{background-color:#800}ul{list-style:none;padding:.5em 0 2em 0;margin:0}ul ul{padding:0}li{line-height:2.5em;padding:0 1em}li:hover{background-color:#eee}li li{margin-right:-1em}li li:hover{background-color:#ccc}.right{float:right;text-align:right}.left{float:left}#updateForm{margin:0;float:right}input[type='file']{display:none}input[type='submit'],.inputfile+label{cursor:pointer}#content{background-color:#fff;height:100%;margin:0 auto;overflow-y:scroll;-ms-overflow-style:none;scrollbar-width:none}#content::-webkit-scrollbar{display:none}#footer{-webkit-backface-visibility:hidden;backface-visibility:hidden;position:fixed;bottom:0;background:#fff;width:calc(100% - 20px);text-align:end;padding:0 10px}@media(min-width:50em){#content{max-width:62.5rem}#footer{max-width:calc(62.5rem - 20px)}}@media(max-width:575.98px){.btn,.badge,.input{float:unset;width:100%}li{line-height:1}h1 div{padding:0}}.input:hover{background:#fff}"
+            "body,html{background:#41464d;margin:0;font:1em arial}h1{position:sticky;top:0;padding:0 10px;margin:0;font-weight:lighter;border-bottom:solid #ccc 1px;overflow:hidden;background-color:#fff}h1 div{font-size:20px;float:right;padding-top:1rem}.badge,.btn,.input{border:0;color:#000;margin:.3em .3em 0 0;font-size:1em;line-height:30px;text-align:center !important;text-decoration:none;display:inline-block;outline:solid 1px lightgrey;background-color:lightgrey;width:14em}.btn{cursor:pointer;font-family:Sans}.btn:hover{background-color:darkgrey}.danger{color:white;border:0 solid #000;background-color:#a00;outline:solid 1px #000}.btn.danger:hover{background-color:#800}ul{list-style:none;padding:0 0 1.2em 0;margin:0}ul ul{padding:0}li{line-height:2.5em;padding:0 1em}li:hover{background-color:#eee}.right{float:right;}.left{float:left}#updateForm{margin:0;float:right}input[type='file']{display:none}input[type='submit'],.inputfile+label{cursor:pointer}#content{background-color:#fff;height:100%;margin:0 auto;overflow-y:scroll;-ms-overflow-style:none;scrollbar-width:none}#content::-webkit-scrollbar{display:none}#footer{-webkit-backface-visibility:hidden;backface-visibility:hidden;position:fixed;bottom:0;background:#fff;width:calc(100% - 10px);text-align:end}@media(min-width:50em){#content{max-width:62.5rem}#footer{max-width:calc(62.5rem - 10px)}}@media(max-width:575.98px){.btn,.badge,.input,.right{float:none;width:100%}li{line-height:1;padding:.3em 1em}h1 div{display:none}}.input:hover{background:#fff}"
         );
     });
 
@@ -581,6 +609,8 @@ void setupWebserver(){
             quickswitch.clearLCD();
             quickswitch.updateLCD(true);
             quickswitch.displayWifiStrength(true);
+        }else{
+            quickswitch.updateLCD(true);
         }
     });
 
@@ -672,11 +702,12 @@ void setupWebserver(){
                 server.send(200);
                 rtttl::stop();
                 alertActive = -1;
-                // switch of directly
+                // switch off directly
                 if(lastAction + quickswitch.displayTimeout * 1000 < millis()) {
-                    quickswitch.pixel.sleep(true);
+                    quickswitch.pixel.sleep();
                     screensaver.show();
                 }else{
+                    myEnc.write(quickswitch.getYPosition() / ROTATIONSPEEDFACTOR);
                     quickswitch.clearLCD();
                     quickswitch.updateLCD(false);
                     quickswitch.displayWifiStrength(true);
@@ -710,9 +741,10 @@ void setupWebserver(){
                 // Using setValue for wakeup is bad... more info in led.cpp
                 Serial.println("switch light on");
                 quickswitch.pixel.setValue(value, color);
+                // replace for use with a diffrent display color matching the led color
                 quickswitch.clearLCD();
                 quickswitch.tft.drawString(title,160, 90, 1);
-                quickswitch.tft.unloadFont();
+                quickswitch.tft.loadFont("DejaVuSansCondensed20");
                 quickswitch.tft.drawString(message,160, 120, 4);
                 quickswitch.tft.loadFont("DejaVuSansCondensed28");
                 digitalWrite(DISPLAY_LIGHT_POWER_PIN, 1);
@@ -748,25 +780,21 @@ void setupWebserver(){
     // Serves the Main-Page
     server.on("/", [](){
         Serial.println(F("[webserver] GET /"));
-        // Serial.println(localTime);
-        // sprintf(uptime, "%d Tagen %02d:%02dh",dddd, hhUptime, miUptime);
-        // Serial.println(localTime);
-        // Serial.println(uptime);
 
         String htmlContent =  FPSTR(htmlHeader);
         htmlContent +=
                         "<ul>"
                         "<li>"
-                            "Alle unterstützten Schriftzeichen ausgeben<a href='/showFont' class='right btn'>Ausführen</a>"
+                            "Alle unterstützten Schriftzeichen ausgeben:<a href='/showFont' class='right btn'>Ausführen</a>"
                         "</li>"
                         "<li>"
-                            "Display<a href='/wakeup' class='right btn'>Einschalten</a>"
+                            "Display:<a href='/wakeup' class='right btn'>Einschalten</a>"
                         "</li>"
                         "<li>"
-                            "Uhrzeit<a href='/ntpGetTime' class='right btn'>Aktualisieren</a>"
+                            "Uhrzeit:<a href='/ntpGetTime' class='right btn'>Aktualisieren</a>"
                         "</li>"
                         "<li>"
-                            "Einstellungen<a href='/config' class='right btn'>Öffnen</a>"
+                            "Einstellungen:<a href='/config' class='right btn'>Öffnen</a>"
                         "</li>"
                         "<li>"
                             "wlanReconnectCount:<input class='badge right' type='text' name='wlanReconnectCount'value='" + (String)wlanReconnectCount + "' readonly='true'>"
@@ -781,10 +809,10 @@ void setupWebserver(){
                             "Neustartursache:<input class='badge right' type='text' name='resetReason'    value='" + (String)resetReason + "' readonly='true'>"
                         "</li>"
                         "<li>"
-                            "<div class='right'>"
-                                "<a href='/update' class='btn danger'>Update</a> "
-                                "<a href='/reset' class='btn danger'>Neustarten</a>"
-                            "</div>"
+                            "Update:<a href='/update' class='right btn danger'>Starten</a> "
+                        "</li>"
+                        "<li>"
+                            "Neustart:<a href='/reset' class='right btn danger'>Ausführen</a>"
                         "</li>"
                     "</ul>";
         htmlContent += FPSTR(htmlFooter);
@@ -960,19 +988,41 @@ void udpServerLoop(){
         if(hh > 23){
             hh-=24;
         }
+
+        // int days = epoch / 60 / 60 / 24;
+
+        // int year = 1970 + days / 365.25 + 1;
+        // // hier sommer zeit, dann wird richtig weiter gezählt...
+        // summertime_RAMsave(year, );
+
         sprintf(localTime," %02d:%02d ", hh, mi);
         screensaver.update(localTime);
     }
 }
 
+
+
+// European Daylight Savings Time calculation by "jurs" for German Arduino Forum
+// input parameters: "normal time" for year, month, day, hour and tzHours (0=UTC, 1=MEZ)
+// return value: returns true during Daylight Saving Time, false otherwise
+// boolean summertime_RAMsave(int year, byte month, byte day, byte hour, byte tzHours){
+//     if (month<3 || month>10) return false; // keine Sommerzeit in Jan, Feb, Nov, Dez
+//     if (month>3 && month<10) return true; // Sommerzeit in Apr, Mai, Jun, Jul, Aug, Sep
+//     if (month==3 && (hour + 24 * day)>=(1 + tzHours + 24*(31 - (5 * year /4 + 4) % 7)) || month==10 && (hour + 24 * day)<(1 + tzHours + 24*(31 - (5 * year /4 + 1) % 7)))
+//         return true;
+//     else
+//         return false;
+// }
+
 /**
  * Communicates with QuickSwitch that an Alert is to dismiss
  **/
 bool dismissAlert(){
-    if(alertActive > 0 ){
+    if(alertActive >= 0 ){
         HTTPClient http;
 
         String url = "http://" + String(quickswitch.config.QSIP) + ":" + String(quickswitch.config.QSPort) + "/alert/" + alertActive;
+        // String url = "http://" + String(quickswitch.config.QSIP) + ":3333/alert/" + alertActive;
         
         Serial.print(F("[HTTP] begin: "));
         if (http.begin(url)) {

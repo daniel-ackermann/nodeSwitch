@@ -6,6 +6,9 @@
 
 // Anzahl der LEDs
 #define NUMPIXELS               24
+#define STD_COLOR_RED          255
+#define STD_COLOR_GREEN        255
+#define STD_COLOR_BLUE           0
 
 // Drehencoder
 #define DREHENCODERPIN1          5
@@ -25,7 +28,15 @@
 #define DISPLAYROTATION          1
 
 //Timezoneoffset - Dirty and wihtout changing hours summer/winter
-#define HOUR_OFFSET 2
+#define HOUR_OFFSET              2
+
+/**
+ * Language:
+ *      English:    0
+ *      German:     1
+ * default: English
+ **/
+#define LANG                    1
 
 // Force AP for development
 #define FORCE_ACCESSPOINT       false
@@ -71,10 +82,30 @@
 // Breite vom Sprite
 #define WIDTH                  200
 
-// Websockets
-#define MESSAGE_INTERVAL 30000
-#define HEARTBEAT_INTERVAL 25000
+// Version
+# define VERSION "1.1.1"
+
 // Eeprom
 #define CFGSTART 0
+
+    #if LANG == 1
+        #define NO_SERVER           "Keine Verbindung zum Server"
+        #define NO_WIFI             "Keine Verbindung zum WLAN"
+        #define LOAD_FAILED         "Fehler beim laden der Einstellungen"
+        #define CONNECTING_WIFI     "Verbinde zum WLAN"
+        #define AP_STARTED          "Accesspoint gestartet"
+        #define LOADING_SETTINGS    "Einstellungen werden geladen..."
+        #define CONNECTED           "Verbunden"
+        #define UNDEF_ERR           "nicht definierter Fehler"
+    #else
+        #define NO_SERVER           "No connection to Server"
+        #define NO_WIFI             "No connection to WiFi"
+        #define LOAD_FAILED         "Load Settings failed"
+        #define CONNECTING_WIFI     "Connecting to WiFi"
+        #define AP_STARTED          "Accesspoint started"
+        #define LOADING_SETTINGS    "Loading Settings..."
+        #define CONNECTED           "Connected"
+        #define UNDEF_ERR           "not specified Error"
+    #endif
 
 #endif

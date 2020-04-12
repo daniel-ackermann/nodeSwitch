@@ -72,10 +72,11 @@ boolean QuickSwitch::setUpDeviceList(int counter){
                     Serial.print(F("useScreensaver:\t\t"));
                     Serial.println(useScreensaver);
 
-
+                    // Unterstriche können nicht gespielt werden!!
+                    //                         "Beethoven:d=4,o=6,b=125:8e,8d,8e,8d,8e,8b5,8d,8c,a5, 8p,8c5,8e5,8a5,b5, 8p,8e5,8g5,8b5,c,8p,8e5,8e,8d,8e,8d,8e,8b5,8d,8c,a5, 8p,8c5,8e5,8a5,b5, 8p,8e5,8c,8b5,a5",
                     const static char *          songs[3]        = {
-                        "The final Countdown:d=4,o=5,b=125:p,8p,16b,16a,b,e,8p,16c6,16b,8c6,8b,a,8p,16c6,16b,c6,e,p,8p,16a,16g,8a,8g,8f#,8a,g.,16f#,16g,a.,16g,16a,8b,8a,8g,8f#,e,c6,2b.,16b,16c6,16b,16a,1b",
-                        "Beethoven:d=4,o=6,b=125:8e,8d_,8e,8d_,8e,8b5,8d,8c,a5,8p,8c5,8e5,8a5,b5,8p,8e5,8g_5,8b5,c,8p,8e5,8e,8d_,8e,8d_,8e,8b5,8d,8c,a5,8p,8c5,8e5,8a5,b5,8p,8e5,8c,8b5,a5",
+                        "The final Countdown:d=4,o=5,b=125:p,8p,16b,16a,b,e,4p,16c6,16b,8c6,8b,a,4p,16c6,16b,c6,e,p,8p,16a,16g,8a,8g,8f#,8a,g.,16f#,16g,a.,16g,16a,8b,8a,8g,8f#,e,c6,2b.,16b,16c6,16b,16a,1b",
+                        "Beethoven:d=4,o=6,b=125:8e,8d,8e,8d,8e,8b5,8d,8c,a5,16p,8c5,8e5,8a5,b5,16p,8e5,8e,8d,8e,8d,8e,8b5,8d,8c,a5,16p,8c5,8e5,8a5,b5,16p,8e5,8c,8b5,a5",
                         "mario:d=4,o=5,b=100:16e6,16e6,32p,8e6,16c6,8e6,8g6,8p,8g,8p,8c6,16p,8g,16p,8e,16p,8a,8b,16a#,8a,16g.,16e6,16g6,8a6,16f6,8g6,8e6,16c6,16d6,8b,16p,8c6,16p,8g,16p,8e,16p,8a,8b,16a#,8a,16g.,16e6,16g6,8a6,16f6,8g6,8e6,16c6,16d6,8b,8p,16g6,16f#6,16f6,16d#6,16p,16e6,16p,16g#,16a,16c6,16p,16a,16c6,16d6,8p,16g6,16f#6,16f6,16d#6,16p,16e6,16p,16c7,16p,16c7,16c7,p,16g6,16f#6,16f6,16d#6,16p,16e6,16p,16g#,16a,16c6,16p,16a,16c6,16d6,8p,16d#6,8p,16d6,8p,16c6"
                     };
 
@@ -97,6 +98,7 @@ boolean QuickSwitch::setUpDeviceList(int counter){
                     Serial.println(devices.size());
                     deviceCount = devices.size();
 
+                    deviceList.clear();
                     
                     initSprite(devices.size() * LINEHIGHT + 120 * 2, WIDTH);
                     int partDeg = pixel.pixels.numPixels() / devices.size();
@@ -148,16 +150,18 @@ void QuickSwitch::initTFT(){
     tft.setTextColor(TFT_WHITE, bgColor);
     tft.setBitmapColor(TFT_WHITE, bgColor);
     if (SPIFFS.begin()) {
-        Serial.println("\r\nSPIFFS available!");
+        Serial.println(F("\r\nSPIFFS available!"));
         bool font_missing = false;
+        if (SPIFFS.exists("/DejaVuSansCondensed20.vlw")    == false) font_missing = true;
         if (SPIFFS.exists("/DejaVuSansCondensed28.vlw")    == false) font_missing = true;
+        if (SPIFFS.exists("/DejaVuSansCondensed60.vlw")    == false) font_missing = true;
         if (font_missing){
-            Serial.println("\r\nFont missing in SPIFFS, did you upload it?");
+            Serial.println(F("\r\nFont missing in SPIFFS, did you upload it?"));
         }else{
-            tft.loadFont("DejaVuSansCondensed28");
+            tft.loadFont(F("DejaVuSansCondensed28"));
         }
     }else{
-        Serial.println("SPIFFS initialisation failed!");
+        Serial.println(F("SPIFFS initialisation failed!"));
     }
 }
 
@@ -174,37 +178,36 @@ void QuickSwitch::displayError(int code){
     String error = "";
     switch(code){
         case 1:      
-            error = "No connection to Server";
+            error = NO_SERVER;
             break;
         case 2:
-            error = "No connection to WiFi";
+            error = NO_WIFI;
             break;
         case 3:
-            error = "Load Settings failed";
+            error = LOAD_FAILED;
             break;
         case 4:
-            error = "Connecting to WiFi";
+            error = CONNECTING_WIFI;
             break;
         case 5:
-            error = "Accesspoint started";
+            error = AP_STARTED;
             break;
         case 6:
-            error = "Loading Settings...";
+            error = LOADING_SETTINGS;
             break;
         case 7:
-            error = "Connected";
+            error = CONNECTED;
             break;
         case 8:
-            // this->.tft.drawChar(0, 15, 33, TFT_RED, quickswitch.bgColor, 3); // Draw '!'
             tft.fillCircle(40, 25, 5, TFT_RED); // Draw circle
             return;
         default:
-            workingStatus = -1;
-            error = "not specified Error";
+            workingStatus = 9;
+            error = UNDEF_ERR;
             break;
     }
+    tft.loadFont("DejaVuSansCondensed20");
     tft.fillScreen(bgColor);
-    tft.unloadFont();
     tft.drawString(error,160, 90, 4);
     if(WiFi.localIP()){
         tft.drawString(WiFi.localIP().toString(), 160, 120, 4);
@@ -229,14 +232,14 @@ int QuickSwitch::getYPosition(){
 
 void QuickSwitch::updateLCD(bool wakeup = false){
     // Update LCD
-    // This is too slow!! Do not update the WifiSrength in the loop!
+    // Reading the WiFi-Strength while updating is too slow!!
     // displayWifiStrength();
     tft.setTextColor(TFT_WHITE, bgColor);
     tft.setBitmapColor(TFT_WHITE, bgColor);
     tft.fillTriangle(50,115, 55,120, 50,125,TFT_WHITE);
     sprite.pushSprite(60, ypos);
 
-    if(wakeup == false && pixel.sleep() == 1){
+    if(wakeup == false && pixel.isSleeping() == 1){
             return;
     }
 
@@ -248,7 +251,7 @@ void QuickSwitch::updateLCD(bool wakeup = false){
         // Prozent und An/Aus
         case 0:
         case 1:{
-            pixel.setValue(deviceList[selected].getStatusFloat(), pixel.pixels.Color(255,0,255));
+            pixel.setValue(deviceList[selected].getStatusFloat(), pixel.pixels.Color(STD_COLOR_RED, STD_COLOR_GREEN, STD_COLOR_BLUE));
             break;
         }
         // RGB
