@@ -117,6 +117,7 @@ Device::Device(const char* newId, const char* newName, const char* newSuffix, in
         Serial.print(F("\tdeviceStatus: \t"));
         Serial.print(status);
     }else{
+        Serial.print(path);
         Serial.print(F("QuickSwitch meldet:"));
         Serial.println(statusCode);
         Serial.println(response);
@@ -125,3 +126,4 @@ Device::Device(const char* newId, const char* newName, const char* newSuffix, in
 }
 
 Device::Device(){}
+Device::~Device(){}

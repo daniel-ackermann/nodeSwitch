@@ -30,4 +30,5 @@ class Device {
         Device(const char* newId, const char* newName, const char* newSuffix, int newDeviceMode, char* QSIP, int QSPort);
         // Device(const char* newId, const char* newName, const char* newSuffix, int newDeviceMode, char* QSIP, int QSPort, int sendTimeout);
         Device();
+        ~Device();
 };
