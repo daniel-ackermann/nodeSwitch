@@ -37,3 +37,7 @@ Adafruit NeoPixel           // Version: 1.2.4  by Adafruit          https://gith
 ArduinoJSON                 // Version: 5.13.5 by Benoit Blanchon   https://arduinojson.org/                        // Version 6 ist not working jet!
 QList                       // Version: 0.6.7  by Martin Dagarin    https://github.com/SloCompTech/QList
 ```
+
+## Flashen der Software:
+
+Besonders zu beachten ist, dass die FlashSize auf 4M(2M SPIFFS) eingestellt ist. Nur so passen die Schriftarten und der Sketch auf den ESP.
